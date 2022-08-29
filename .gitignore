@@ -1,0 +1,4 @@
+gmcache
+*.exe
+.idea
+go.sum

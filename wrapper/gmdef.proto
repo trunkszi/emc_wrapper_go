@@ -1,0 +1,633 @@
+syntax = "proto3";
+
+option go_package = "../wrapper;wrapper";
+
+package gmsdk;
+
+// protoc -I="."  --go_out="./" --proto_path="." gmdef.proto
+// protoc -I=./ -I=../../ --cpp_out=./ gmdef.proto
+// protoc -I=./ -I=../../ --grpc_out=. --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` gmdef.proto
+
+enum StrategyMode {
+    MODE_UNDEF    = 0;  //未定义， 策略不会运行
+    MODE_LIVE     = 1;  //实盘与仿真模式
+    MODE_BACKTEST = 2;  //回测模式
+}
+
+enum OrderStatus {
+    OrderStatus_Unknown            = 0;
+    OrderStatus_New                = 1;   //已报
+    OrderStatus_PartiallyFilled    = 2;   //部成
+    OrderStatus_Filled             = 3;   //已成
+    OrderStatus_DoneForDay         = 4;   //
+    OrderStatus_Canceled           = 5;   //已撤
+    OrderStatus_PendingCancel      = 6;   //待撤
+    OrderStatus_Stopped            = 7;   //
+    OrderStatus_Rejected           = 8;   //已拒绝
+    OrderStatus_Suspended          = 9;   //挂起
+    OrderStatus_PendingNew         = 10;  //待报
+    OrderStatus_Calculated         = 11;  //
+    OrderStatus_Expired            = 12;  //已过期
+    OrderStatus_AcceptedForBidding = 13;  //
+    OrderStatus_PendingReplace     = 14;  //
+}
+
+//执行回报类型
+enum ExecType {
+    ExecType_Unknown        = 0;
+    ExecType_New            = 1;   //已报
+    ExecType_DoneForDay     = 4;   //
+    ExecType_Canceled       = 5;   //已撤销
+    ExecType_PendingCancel  = 6;   //待撤销
+    ExecType_Stopped        = 7;   //
+    ExecType_Rejected       = 8;   //已拒绝
+    ExecType_Suspended      = 9;   //挂起
+    ExecType_PendingNew     = 10;  //待报
+    ExecType_Calculated     = 11;  //
+    ExecType_Expired        = 12;  //过期
+    ExecType_Restated       = 13;  //
+    ExecType_PendingReplace = 14;  //
+    ExecType_Trade          = 15;  //成交
+    ExecType_TradeCorrect   = 16;  //
+    ExecType_TradeCancel    = 17;  //
+    ExecType_OrderStatus    = 18;  //委托状态
+    ExecType_CancelRejected = 19;  //撤单被拒绝
+}
+
+//委托拒绝原因
+enum OrderRejectReason {
+    OrderRejectReason_Unknown               = 0;    //未知原因
+    OrderRejectReason_RiskRuleCheckFailed   = 1;    //不符合风控规则
+    OrderRejectReason_NoEnoughCash          = 2;    //资金不足
+    OrderRejectReason_NoEnoughPosition      = 3;    //仓位不足
+    OrderRejectReason_IllegalAccountId      = 4;    //非法账户ID
+    OrderRejectReason_IllegalStrategyId     = 5;    //非法策略ID
+    OrderRejectReason_IllegalSymbol         = 6;    //非法交易代码
+    OrderRejectReason_IllegalVolume         = 7;    //非法委托量
+    OrderRejectReason_IllegalPrice          = 8;    //非法委托价
+    OrderRejectReason_AccountDisabled       = 10;   //交易账号被禁止交易
+    OrderRejectReason_AccountDisconnected   = 11;   //交易账号未连接
+    OrderRejectReason_AccountLoggedout      = 12;   //交易账号未登录
+    OrderRejectReason_NotInTradingSession   = 13;   //非交易时段
+    OrderRejectReason_OrderTypeNotSupported = 14;   //委托类型不支持
+    OrderRejectReason_Throttle              = 15;   //流控限制
+    OrderRejectReason_SymbolSusppended      = 16;   //交易代码停牌
+    OrderRejectReason_Internal              = 999;  //内部错误
+
+    CancelOrderRejectReason_OrderFinalized         = 101;  //委托已完成
+    CancelOrderRejectReason_UnknownOrder           = 102;  //未知委托
+    CancelOrderRejectReason_BrokerOption           = 103;  //柜台设置
+    CancelOrderRejectReason_AlreadyInPendingCancel = 104;  //委托撤销中
+}
+
+//委托方向
+enum OrderSide {
+    OrderSide_Unknown = 0;
+    OrderSide_Buy     = 1;  //买入
+    OrderSide_Sell    = 2;  //卖出
+}
+
+//委托类型
+enum OrderType {
+    OrderType_Unknown = 0;
+    OrderType_Limit   = 1;  //限价委托
+    OrderType_Market  = 2;  //市价委托
+    OrderType_Stop    = 3;  //止损止盈委托
+}
+
+//委托时间属性
+enum OrderDuration {
+    OrderDuration_Unknown = 0;
+    OrderDuration_FAK     = 1;  //即时成交剩余撤销(fill and kill)
+    OrderDuration_FOK     = 2;  //即时全额成交或撤销(fill or kill)
+    OrderDuration_GFD     = 3;  //当日有效(good for day)
+    OrderDuration_GFS     = 4;  //本节有效(good for section)
+    OrderDuration_GTD     = 5;  //指定日期前有效(goodl till date)
+    OrderDuration_GTC     = 6;  //撤销前有效(good till cancel)
+    OrderDuration_GFA     = 7;  //集合竞价前有效(good for auction)
+}
+
+//委托成交属性
+enum OrderQualifier {
+    OrderQualifier_Unknown = 0;
+    OrderQualifier_BOC     = 1;  //对方最优价格(best of counterparty)
+    OrderQualifier_BOP     = 2;  //己方最优价格(best of party)
+    OrderQualifier_B5TC    = 3;  //最优五档剩余撤销(best 5 then cancel)
+    OrderQualifier_B5TL    = 4;  //最优五档剩余转限价(best 5 then limit)
+}
+
+//持仓方向
+enum PositionSide {
+    PositionSide_Unknown = 0;
+    PositionSide_Long    = 1;  //多方向
+    PositionSide_Short   = 2;  //空方向
+}
+
+//开平标志
+enum PositionEffect {
+    PositionEffect_Unknown        = 0;
+    PositionEffect_Open           = 1;  //开仓
+    PositionEffect_Close          = 2;  //平仓;具体语义取决于对应的交易所
+    PositionEffect_CloseToday     = 3;  //平今仓
+    PositionEffect_CloseYesterday = 4;  //平昨仓
+}
+
+//资金持仓变更原因
+enum CashPositionChangeReason {
+    CashPositionChangeReason_Unknown  = 0;
+    CashPositionChangeReason_Trade    = 1;  //交易
+    CashPositionChangeReason_Inout    = 2;  //出入金/出入持仓
+    CashPositionChangeReason_Dividend = 3;  //分红送股
+}
+
+enum AccountState {
+    State_UNKNOWN       = 0;  //未知
+    State_CONNECTING    = 1;  //连接中
+    State_CONNECTED     = 2;  //已连接
+    State_LOGGEDIN      = 3;  //已登录
+    State_DISCONNECTING = 4;  //断开中
+    State_DISCONNECTED  = 5;  //已断开
+    State_ERROR         = 6;  //错误
+}
+
+//算法单状态;暂停/恢复算法单时有效
+enum AlgoOrderStatus {
+    AlgoOrderStatus_Unknown                 = 0;
+    AlgoOrderStatus_Resume                  = 1;  //恢复母单
+    AlgoOrderStatus_Pause                   = 2;  //暂停母单
+    AlgoOrderStatus_PauseAndCancelSubOrders = 3;  //暂算母单并撤子单
+}
+
+//头寸来源(仅适用融券融券)
+enum PositionSrc {
+    PositionSrc_Unknown = 0;
+    PositionSrc_L1      = 1;  //普通沲
+    PositionSrc_L2      = 2;  //专项沲
+}
+
+//证券类型
+enum SecurityType {
+    SecurityType_Unknown          = 0;
+    SecurityType_Stock            = 1;  //股票
+    SecurityType_Fund             = 2;  //基金
+    SecurityType_Index            = 3;  //指数
+    SecurityType_Future           = 4;  //期货
+    SecurityType_Option           = 5;  //期权
+    SecurityType_Credit           = 6;  //两融
+    SecurityType_Bond             = 7;  //债券
+    SecurityType_Bond_Convertible = 8;  //可债券
+}
+
+message Bar {
+    string symbol   = 1;
+    double bob      = 2;   /// bar的开始时间
+    double eob      = 3;   /// bar的结束时间
+    float open      = 4;   ///<开盘价
+    float close     = 5;   ///<收盘价
+    float high      = 6;   ///<最高价
+    float low       = 7;   ///<最低价
+    double volume   = 8;   ///<成交量
+    double amount   = 9;   ///<成交金额
+    float pre_close = 10;  ///昨收盘价，只有日频数据赋值
+
+    int64 position   = 11;  ///<持仓量
+    string frequency = 12;  /// bar频度
+}
+
+message Quote {
+    float bid_price  = 1;  ///本档委买价
+    int64 bid_volume = 2;  ///本档委买量
+    float ask_price  = 3;  ///本档委卖价
+    int64 ask_volume = 4;  ///本档委卖量
+}
+
+message Tick {
+    string symbol         = 1;
+    double created_at     = 2;   ///< utc时间，精确到毫秒
+    float price           = 3;   ///<最新价
+    float open            = 4;   ///<开盘价
+    float high            = 5;   ///<最高价
+    float low             = 6;   ///<最低价
+    double cum_volume     = 7;   ///<成交总量
+    double cum_amount     = 8;   ///<成交总金额/最新成交额,累计值
+    int64 cum_position    = 9;   ///<合约持仓量(期),累计值
+    double last_amount    = 10;  ///<瞬时成交额
+    int32 last_volume     = 11;  ///<瞬时成交量
+    int32 trade_type      = 12;  ///(保留)交易类型,对应多开,多平等类型
+    repeated Quote quotes = 13;  ///报价, 下标从0开始，0-表示第一档，1-表示第二档，依次类推
+}
+
+message L2Transaction {
+    string symbol         = 1;
+    double created_at     = 2;  ///成交时间，utc时间
+    float price           = 3;  ///成交价
+    int64 volume          = 4;  ///成交量
+    string side           = 5;  ///内外盘标记
+    string exec_type      = 6;  ///成交类型
+    int64 exec_index      = 7;  ///成交编号
+    int64 ask_order_index = 8;  ///叫卖委托编号
+    int64 bid_order_index = 9;  ///叫买委托编号
+}
+
+message L2Order {
+    string symbol     = 1;
+    double created_at = 2;  ///委托时间，utc时间
+    float price       = 3;  ///委托价
+    int64 volume      = 4;  ///委托量
+    string side       = 5;  ///买卖方向
+    string order_type = 6;  ///委托类型
+    int64 order_index = 7;  ///委托编号
+}
+
+message L2OrderQueue {
+    string symbol                = 1;
+    double created_at            = 2;  ///行情时间，utc时间
+    float price                  = 3;  ///最优委托价
+    int64 volume                 = 4;  ///委托量
+    string side                  = 5;  ///买卖方向
+    int32 queue_orders           = 6;  ///委托量队列中元素个数(最多50)
+    repeated int32 queue_volumes = 7;  ///委托量队列(最多50个，有可能小于50, 有效数据长度取决于queue_orders)
+}
+
+message Order {
+    string strategy_id  = 1;  //策略ID
+    string account_id   = 2;  //账号ID
+    string account_name = 3;  //账户登录名
+
+    string cl_ord_id     = 4;  //委托客户端ID
+    string order_id      = 5;  //委托柜台ID
+    string ex_ord_id     = 6;  //委托交易所ID
+    string algo_order_id = 7;  //算法母单ID
+    int32 order_business = 8;  //业务类型
+
+    string symbol         = 9;   // symbol
+    int32 side            = 10;  //买卖方向，取值参考enum OrderSide
+    int32 position_effect = 11;  //开平标志，取值参考enum PositionEffect
+    int32 position_side   = 12;  //持仓方向，取值参考enum PositionSide
+
+    int32 order_type      = 13;  //委托类型，取值参考enum OrderType
+    int32 order_duration  = 14;  //委托时间属性，取值参考enum OrderDuration
+    int32 order_qualifier = 15;  //委托成交属性，取值参考enum OrderQualifier
+    int32 order_src       = 16;  //委托来源，取值参考enum OrderSrc
+    int32 position_src    = 17;  //头寸来源（仅适用融资融券），取值参考 enum PositionSrc
+
+    int32 status                 = 18;  //委托状态，取值参考enum OrderStatus
+    int32 ord_rej_reason         = 19;  //委托拒绝原因，取值参考enum OrderRejectReason
+    string ord_rej_reason_detail = 20;  //委托拒绝原因描述
+
+    double price      = 21;  //委托价格
+    double stop_price = 22;  //委托止损/止盈触发价格
+
+    int32 order_style     = 23;  //委托风格，取值参考 enum OrderStyle
+    int64 volume          = 24;  //委托量
+    double value          = 25;  //委托额
+    double percent        = 26;  //委托百分比
+    int64 target_volume   = 27;  //委托目标量
+    double target_value   = 28;  //委托目标额
+    double target_percent = 29;  //委托目标百分比
+
+    int64 filled_volume      = 30;  //已成量
+    double filled_vwap       = 31;  //已成均价
+    double filled_amount     = 32;  //已成金额
+    double filled_commission = 33;  //已成手续费
+
+    int64 created_at = 34;  //委托创建时间
+    int64 updated_at = 35;  //委托更新时间
+}
+
+message AlgoOrder {
+    string strategy_id  = 1;  //策略ID
+    string account_id   = 2;  //账号ID
+    string account_name = 3;  //账户登录名
+
+    string cl_ord_id     = 4;  //委托客户端ID
+    string order_id      = 5;  //委托柜台ID
+    string ex_ord_id     = 6;  //委托交易所ID
+    int32 order_business = 7;  //业务类型
+
+    string symbol         = 8;   // symbol
+    int32 side            = 9;   //买卖方向，取值参考enum OrderSide
+    int32 position_effect = 10;  //开平标志，取值参考enum PositionEffect
+    int32 position_side   = 11;  //持仓方向，取值参考enum PositionSide
+
+    int32 order_type      = 12;  //委托类型，取值参考enum OrderType
+    int32 order_duration  = 13;  //委托时间属性，取值参考enum OrderDuration
+    int32 order_qualifier = 14;  //委托成交属性，取值参考enum OrderQualifier
+    int32 order_src       = 15;  //委托来源，取值参考enum OrderSrc
+    int32 position_src    = 16;  //头寸来源（仅适用融资融券），取值参考 enum PositionSrc
+
+    int32 status                 = 17;  //委托状态，取值参考enum OrderStatus
+    int32 ord_rej_reason         = 18;  //委托拒绝原因，取值参考enum OrderRejectReason
+    string ord_rej_reason_detail = 19;  //委托拒绝原因描述
+
+    double price      = 20;  //委托价格
+    double stop_price = 21;  //委托止损/止盈触发价格
+
+    int32 order_style     = 22;  //委托风格，取值参考 enum OrderStyle
+    int64 volume          = 23;  //委托量
+    double value          = 24;  //委托额
+    double percent        = 25;  //委托百分比
+    int64 target_volume   = 26;  //委托目标量
+    double target_value   = 27;  //委托目标额
+    double target_percent = 28;  //委托目标百分比
+
+    int64 filled_volume      = 29;  //已成量
+    double filled_vwap       = 30;  //已成均价
+    double filled_amount     = 31;  //已成金额
+    double filled_commission = 32;  //已成手续费
+
+    string algo_name    = 33;  //算法策略名
+    string algo_param   = 34;  //算法策略参数
+    int32 algo_status   = 35;  //算法策略状态,仅作为AlgoOrder Pause请求入参，取值参考 enum AlgoOrderStatus
+    string algo_comment = 36;  //算法单备注
+
+    int64 created_at = 37;  //委托创建时间
+    int64 updated_at = 38;  //委托更新时间
+}
+
+message ExecRpt {
+    string strategy_id  = 1;  //策略ID
+    string account_id   = 2;  //账号ID
+    string account_name = 3;  //账户登录名
+
+    string cl_ord_id = 4;  //委托客户端ID
+    string order_id  = 5;  //委托柜台ID
+    string exec_id   = 6;  //委托回报ID
+
+    string symbol = 7;  // symbol
+
+    int32 position_effect        = 8;   //开平标志，取值参考enum PositionEffect
+    int32 side                   = 9;   //买卖方向，取值参考enum OrderSide
+    int32 ord_rej_reason         = 10;  //委托拒绝原因，取值参考enum OrderRejectReason
+    string ord_rej_reason_detail = 11;  //委托拒绝原因描述
+    int32 exec_type              = 12;  //执行回报类型, 取值参考enum ExecType
+
+    double price      = 13;  //委托成交价格
+    int64 volume      = 14;  //委托成交量
+    double amount     = 15;  //委托成交金额
+    double commission = 16;  //委托成交手续费
+    double cost       = 17;  //委托成交成本金额
+    int64 created_at  = 18;  //回报创建时间
+}
+
+message Cash {
+    string account_id   = 1;  //账号ID
+    string account_name = 2;  //账户登录名
+
+    int32 currency = 3;  //币种
+
+    double nav          = 4;  //净值(cum_inout + cum_pnl + fpnl - cum_commission)
+    double pnl          = 5;  //净收益(nav-cum_inout)
+    double fpnl         = 6;  //浮动盈亏(sum(each position fpnl))
+    double frozen       = 7;  //持仓占用资金
+    double order_frozen = 8;  //挂单冻结资金
+    double available    = 9;  //可用资金
+    // no  leverage:  available=(cum_inout + cum_pnl - cum_commission - frozen - order_frozen)
+    // has leverage:  fpnl     =(fpnl>0 ? fpnl : (frozen < |fpnl|) ? (frozen-|fpnl|) : 0)
+    //                available=(cum_inout + cum_pnl - cum_commission - frozen - order_frozen + fpnl)
+    double balance        = 10;  //资金余额
+    double market_value   = 11;  //持仓市值
+    double cum_inout      = 12;  //累计出入金
+    double cum_trade      = 13;  //累计交易额
+    double cum_pnl        = 14;  //累计平仓收益(没扣除手续费)
+    double cum_commission = 15;  //累计手续费
+
+    double last_trade      = 16;  //上一次交易额
+    double last_pnl        = 17;  //上一次收益
+    double last_commission = 18;  //上一次手续费
+    double last_inout      = 19;  //上一次出入金
+    int32 change_reason    = 20;  //资金变更原因，取值参考enum CashPositionChangeReason
+    string change_event_id = 21;  //触发资金变更事件的ID
+
+    int64 created_at = 22;  //资金初始时间
+    int64 updated_at = 23;  //资金变更时间
+}
+
+message Position {
+    string account_id   = 1;  //账号ID
+    string account_name = 2;  //账户登录名
+
+    string symbol       = 3;   // symbol
+    int32 side          = 4;   //持仓方向，取值参考enum PositionSide
+    int64 volume        = 5;   //总持仓量=; 昨持仓量(volume-volume_today)
+    int64 volume_today  = 6;   //今日持仓量
+    double vwap         = 7;   //持仓均价(股票为基于开仓价的持仓均价，期货为基于结算价的持仓均价)
+    double vwap_diluted = 8;   //摊薄成本价
+    double vwap_open    = 9;   //基于开仓价的持仓均价(期货)
+    double amount       = 10;  //持仓额(volume*vwap*multiplier)
+
+    double price             = 11;  //当前行情价格
+    double fpnl              = 12;  //持仓浮动盈亏((price-vwap)*volume*multiplier)
+    double fpnl_open         = 13;  //持仓浮动盈亏,基于开仓均价，适用于期货((price-vwap_open)*volume*multiplier)
+    double cost              = 14;  //持仓成本(vwap*volume*multiplier*margin_ratio)
+    int64 order_frozen       = 15;  //挂单冻结仓位
+    int64 order_frozen_today = 16;  //挂单冻结今仓仓位
+    int64 available          = 17;  //可用总仓位(volume-order_frozen)=; 可用昨仓位(available-available_today)
+    int64 available_today    = 18;  //可用今仓位(volume_today-order_frozen_today)
+    int64 available_now      = 19;  //当前可平仓位
+    double market_value      = 20;  //持仓市值
+
+    double last_price      = 21;  //上一次成交价
+    int64 last_volume      = 22;  //上一次成交量
+    int64 last_inout       = 23;  //上一次出入持仓量
+    int32 change_reason    = 24;  //仓位变更原因，取值参考enum CashPositionChangeReason
+    string change_event_id = 25;  //触发资金变更事件的ID
+
+    int32 has_dividend = 26;  //持仓区间有分红配送
+    int64 created_at   = 27;  //建仓时间
+    int64 updated_at   = 28;  //仓位变更时间
+}
+
+message Account {
+    string account_id   = 1;  //账号ID
+    string account_name = 2;  //账户登录名
+    string title        = 3;  //账号名称
+    string intro        = 4;  //账号描述
+    string comment      = 5;  //账号备注
+}
+
+message AccountStatus {
+    string account_id   = 1;  //账号ID
+    string account_name = 2;  //账户登录名
+    int32 state         = 3;  //账户状态
+    int32 error_code    = 4;  //错误码
+    string error_msg    = 5;  //错误信息
+}
+
+message Parameter {
+    string key    = 1;  //参数键
+    double value  = 2;  //参数值
+    double min    = 3;  //可设置的最小值
+    double max    = 4;  //可设置的最大值
+    string name   = 5;  //参数名
+    string intro  = 6;  //参数说明
+    string group  = 7;  //组名
+    bool readonly = 8;  //是否只读
+}
+
+message Indicator {
+    string account_id       = 1;   //账号ID
+    double pnl_ratio        = 2;   //累计收益率(pnl/cum_inout)
+    double pnl_ratio_annual = 3;   //年化收益率
+    double sharp_ratio      = 4;   //夏普比率
+    double max_drawdown     = 5;   //最大回撤
+    double risk_ratio       = 6;   //风险比率
+    int32 open_count        = 7;   //开仓次数
+    int32 close_count       = 8;   //平仓次数
+    int32 win_count         = 9;   //盈利次数
+    int32 lose_count        = 10;  //亏损次数
+    double win_ratio        = 11;  //胜率
+
+    int64 created_at = 12;  //指标创建时间
+    int64 updated_at = 13;  //指标变更时间
+}
+
+message CollateralInstrument {
+    string symbol      = 1;  //担保证券标的
+    string name        = 2;  //名称
+    double pledge_rate = 3;  //折算率
+}
+
+message BorrowableInstrument {
+    string symbol                   = 1;  //可融证券标的
+    string name                     = 2;  //名称
+    double margin_rate_for_cash     = 3;  //融资保证金比率
+    double margin_rate_for_security = 4;  //融券保证金比率
+}
+
+message BorrowableInstrumentPosition {
+    string symbol    = 1;  //可融证券标的
+    string name      = 2;  //名称
+    double balance   = 3;  //证券余额
+    double available = 4;  //证券可用
+}
+
+message CreditContract {
+    string symbol           = 1;   //证券代码 stkcode
+    string name             = 2;   //名称
+    int32 orderdate         = 3;   //委托日期
+    string ordersno         = 4;   //委 托 号
+    string creditdirect     = 5;   //融资融券方向
+    double orderqty         = 6;   //委托数量
+    double matchqty         = 7;   //成交数量
+    double orderamt         = 8;   //委托金额
+    double orderfrzamt      = 9;   //委托冻结金额
+    double matchamt         = 10;  //成交金额
+    double clearamt         = 11;  //清算金额
+    string lifestatus       = 12;  //合约状态
+    int32 enddate           = 13;  //负债截止日期
+    int32 oldenddate        = 14;  //原始的负债截止日期
+    double creditrepay      = 15;  // T日之前归还金额
+    double creditrepayunfrz = 16;  // T日归还金额
+    double fundremain       = 17;  //应还金额
+    double stkrepay         = 18;  // T日之前归还数量
+    double stkrepayunfrz    = 19;  // T日归还数量
+    double stkremain        = 20;  //应还证券数量
+    double stkremainvalue   = 21;  //应还证券市值
+    double fee              = 22;  //融资融券息、费
+    double overduefee       = 23;  //逾期未偿还息、费
+    double fee_repay        = 24;  //己偿还息、费
+    double punifee          = 25;  //利息产生的罚息
+    double punifee_repay    = 26;  //己偿还罚息
+    double rights           = 27;  //未偿还权益金额
+    double overduerights    = 28;  //逾期未偿还权益
+    double rights_repay     = 29;  //己偿还权益
+    double lastprice        = 30;  //最新价
+    double profitcost       = 31;  //浮动盈亏
+    int32 sysdate           = 32;  //系统日期
+    string sno              = 33;  //合约编号
+    int32 lastdate          = 34;  //最后一次计算息费日期
+    int32 closedate         = 35;  //合约全部偿还日期
+    double punidebts        = 36;  //逾期本金罚息
+    double punidebts_repay  = 37;  //本金罚息偿还
+    double punidebtsunfrz   = 38;  //逾期本金罚息
+    double punifeeunfrz     = 39;  //逾期息费罚息
+    double punirights       = 40;  //逾期权益罚息
+    double punirights_repay = 41;  //权益罚息偿还
+    double punirightsunfrz  = 42;  //逾期权益罚息
+    double feeunfrz         = 43;  //实时偿还利息
+    double overduefeeunfrz  = 44;  //实时偿还逾期利息
+    double rightsqty        = 45;  //未偿还权益数量
+    double overduerightsqty = 46;  //逾期未偿还权益数量
+}
+
+message CreditCash {
+    double fundint32rrate           = 1;   //融资利率
+    double stkint32rrate            = 2;   //融券利率
+    double punishint32rrate         = 3;   //罚息利率
+    string creditstatus             = 4;   //信用状态
+    double marginrates              = 5;   //维持担保比例
+    double realrate                 = 6;   //实时担保比例
+    double asset                    = 7;   //总资产
+    double liability                = 8;   //总负债
+    double marginavl                = 9;   //保证金可用数
+    double fundbal                  = 10;  //资金余额
+    double fundavl                  = 11;  //资金可用数
+    double dsaleamtbal              = 12;  //融券卖出所得资金
+    double guaranteeout             = 13;  //可转出担保资产
+    double gagemktavl               = 14;  //担保证券市值
+    double fdealavl                 = 15;  //融资本金
+    double ffee                     = 16;  //融资息费
+    double ftotaldebts              = 17;  //融资负债合计
+    double dealfmktavl              = 18;  //应付融券市值
+    double dfee                     = 19;  //融券息费
+    double dtotaldebts              = 20;  //融券负债合计
+    double fcreditbal               = 21;  //融资授信额度
+    double fcreditavl               = 22;  //融资可用额度
+    double fcreditfrz               = 23;  //融资额度冻结
+    double dcreditbal               = 24;  //融券授信额度
+    double dcreditavl               = 25;  //融券可用额度
+    double dcreditfrz               = 26;  //融券额度冻结
+    double rights                   = 27;  //红利权益
+    double serviceuncomerqrights    = 28;  //红利权益(在途)
+    double rightsqty                = 29;  //红股权益
+    double serviceuncomerqrightsqty = 30;  //红股权益(在途)
+    double acreditbal               = 31;  //总额度
+    double acreditavl               = 32;  //总可用额度
+    double acashcapital             = 33;  //所有现金资产（所有资产、包括融券卖出）
+    double astkmktvalue             = 34;  //所有证券市值（包含融资买入、非担保品）
+    double withdrawable             = 35;  //可取资金
+    double netcapital               = 36;  //净资产
+    double fcreditpnl               = 37;  //融资盈亏
+    double dcreditpnl               = 38;  //融券盈亏
+    double fcreditmarginoccupied    = 39;  //融资占用保证金
+    double dcreditmarginoccupied    = 40;  //融券占用保证金
+    double collateralbuyableamt     = 41;  //可买担保品资金
+    double repayableamt             = 42;  //可还款金额
+    double dcreditcashavl           = 43;  //融券可用资金
+}
+
+//新股申购额度
+message IPOQI {
+    string exchange       = 1;  //市场代码
+    double quota          = 2;  //市场配额
+    double sse_star_quota = 3;  //上海科创板配额
+}
+
+message IPOInstruments {
+    string symbol = 1;  //申购新股symbol
+    double price  = 2;  //申购价格
+    int32 min_vol = 3;  //申购最小数量
+    int32 max_vol = 4;  //申购最大数量
+}
+
+message IPOMatchNumber {
+    string order_id     = 1;  //委托号
+    string symbol       = 2;  //新股symbol
+    int32 volume        = 3;  //成交数量
+    string match_number = 4;  //申购配号
+    int32 order_at      = 5;  //委托日期
+    int32 match_at      = 6;  //配号日期
+}
+
+message IPOLotInfo {
+    string symbol        = 1;  //新股symbol
+    int32 order_at       = 2;  //委托日期
+    int32 lot_at         = 3;  //中签日期
+    int32 lot_volume     = 4;  //中签数量
+    int32 give_up_volume = 5;  //放弃数量
+    double price         = 6;  //中签价格
+    double amount        = 7;  //中签金额
+    double pay_volume    = 8;  //已缴款数量
+    double pay_amount    = 9;  //已缴款金额
+}
